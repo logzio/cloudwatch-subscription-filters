@@ -20,8 +20,8 @@ func HandleRequest(ctx context.Context, cwEvent CWEvent) {
 	}
 
 	defer logzioSender.Drain()
-	err = proccessLogs(cwEvent)
-
+	processLogs(cwEvent)
+	logger.Info("Finished lambda run")
 }
 
 func main() {
