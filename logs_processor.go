@@ -7,6 +7,7 @@ import (
 )
 
 func processLogs(cwEvent CWEvent) {
+	logsWritten := 0
 	for index, logEvent := range cwEvent.LogEvents {
 		logzioLog := make(map[string]interface{})
 
@@ -19,9 +20,10 @@ func processLogs(cwEvent CWEvent) {
 		// TODO: Check current abilities and add them
 		addAdditionalFields(logzioLog)
 
-		sendLog(logzioLog)
-
+		logsWritten += sendLog(logzioLog)
 	}
+
+	logger.Info(fmt.Sprintf("Wrote %d logs to the Logzio Sender", logsWritten))
 }
 
 // handleMessageField checks if the message field in the event is JSON
@@ -31,7 +33,7 @@ func handleMessageField(logzioLog map[string]interface{}, messageField string) {
 	var tmpJson map[string]interface{}
 	err := json.Unmarshal([]byte(messageField), &tmpJson)
 	if err != nil {
-		logger.Info(fmt.Sprintf("Message %s cannot be parsed to JSON. Will be sent as a string"))
+		logger.Info(fmt.Sprintf("Message %s cannot be parsed to JSON. Will be sent as a string", messageField))
 		logzioLog[fieldMessage] = messageField
 	}
 
@@ -95,11 +97,13 @@ func addAdditionalFields(logzioLog map[string]interface{}) {
 }
 
 // sendLog converts the log to a byte array ([]byte) and writes to the logzioSender
-func sendLog(logzioLog map[string]interface{}) {
+// returns the number of logs that successfully written to the logzio sender
+func sendLog(logzioLog map[string]interface{}) int {
 	logBytes, err := json.Marshal(logzioLog)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Error occurred while processing %s: %s", logzioLog, err.Error()))
 		logger.Error("Log will be dropped")
+		return 0
 	}
 
 	if logBytes != nil && len(logBytes) > 0 {
@@ -108,6 +112,11 @@ func sendLog(logzioLog map[string]interface{}) {
 			logger.Debug(fmt.Sprintf("Error for log %s", string(logBytes)))
 			logger.Error(fmt.Sprintf("Error occurred while writing log to logzio sender: %s", err.Error()))
 			logger.Error("Log will be dropped")
+			return 0
 		}
+
+		return 1
 	}
+
+	return 0
 }
