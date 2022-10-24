@@ -9,15 +9,17 @@ import (
 func processLogs(cwEvent CWEvent) {
 	logsWritten := 0
 	for index, logEvent := range cwEvent.LogEvents {
-		logzioLog := make(map[string]interface{})
+		if !shouldProcessLog(logEvent.Message) {
+			continue
+		}
 
+		logzioLog := make(map[string]interface{})
 		handleMessageField(logzioLog, logEvent.Message)
 
 		addEventFields(logzioLog, cwEvent, index)
 
 		addLogzioFields(logzioLog, logEvent.Timestamp)
 
-		// TODO: Check current abilities and add them
 		addAdditionalFields(logzioLog)
 
 		logsWritten += sendLog(logzioLog)
@@ -119,4 +121,23 @@ func sendLog(logzioLog map[string]interface{}) int {
 	}
 
 	return 0
+}
+
+// processLog returns whether a log should be processed or not.
+// Based on user input - we can filter out lambda platform logs (START, END, REPORT).
+func shouldProcessLog(message string) bool {
+	process := true
+	prefixList := []string{prefixStart, prefixEnd, prefixReport}
+	if getSendAll() {
+		return process
+	} else {
+		for _, prefix := range prefixList {
+			if strings.HasPrefix(message, prefix) {
+				logger.Info("Found a Lambda platform log (START, END or REPORT). Ignoring.")
+				return !process
+			}
+		}
+
+		return process
+	}
 }

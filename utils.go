@@ -25,6 +25,7 @@ const (
 	envLogzioType       = "LOGZIO_TYPE"
 	envCompress         = "COMPRESS"
 	envAdditionalFields = "ADDITIONAL_FIELDS"
+	envSendAll          = "SEND_ALL"
 
 	fieldMessage             = "message"
 	fieldMessageType         = "messageType"
@@ -39,6 +40,11 @@ const (
 	defaultLogLevel = LogLevelInfo
 	defaultType     = "logzio_cloudwatch_lambda"
 	defaultCompress = true
+	defaultSendAll  = false
+
+	prefixStart  = "START"
+	prefixEnd    = "END"
+	prefixReport = "REPORT"
 
 	emptyString          = ""
 	customFieldSeparator = ";"
@@ -187,4 +193,20 @@ func getAdditionalFieldsStr() string {
 	}
 
 	return afStr
+}
+
+func getSendAll() bool {
+	saStr := os.Getenv(envSendAll)
+	if saStr == emptyString {
+		return defaultSendAll
+	}
+
+	sendAll, err := strconv.ParseBool(saStr)
+	if err != nil {
+		logger.Info(fmt.Sprintf("Cannot handle user input for %s, error: %s", envSendAll, err.Error()))
+		logger.Info(fmt.Sprintf("Reverting for default value %t", defaultSendAll))
+		return defaultSendAll
+	}
+
+	return sendAll
 }
