@@ -1,4 +1,4 @@
-package main
+package aws_structures
 
 type CWEventEncoded struct {
 	Awslogs AwsLogsObj `json:"awslogs"`

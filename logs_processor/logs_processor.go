@@ -1,12 +1,17 @@
-package main
+package logs_processor
 
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/logzio/logzio-go"
+	"main/aws_structures"
+	lp "main/logger"
 	"strings"
 )
 
-func processLogs(cwEvent CWEvent) {
+var logger = lp.GetLogger()
+
+func ProcessLogs(cwEvent aws_structures.CWEvent, sender *logzio.LogzioSender) {
 	logsWritten := 0
 	for index, logEvent := range cwEvent.LogEvents {
 		if !shouldProcessLog(logEvent.Message) {
@@ -22,7 +27,7 @@ func processLogs(cwEvent CWEvent) {
 
 		addAdditionalFields(logzioLog)
 
-		logsWritten += sendLog(logzioLog)
+		logsWritten += sendLog(logzioLog, sender)
 	}
 
 	logger.Info(fmt.Sprintf("Wrote %d logs to the Logzio Sender", logsWritten))
@@ -46,7 +51,7 @@ func handleMessageField(logzioLog map[string]interface{}, messageField string) {
 }
 
 // addEventFields add to logzioLog the fields from the CW event, except for the timestamp field (which is handled by addLogzioFields)
-func addEventFields(logzioLog map[string]interface{}, event CWEvent, logIndex int) {
+func addEventFields(logzioLog map[string]interface{}, event aws_structures.CWEvent, logIndex int) {
 	if event.MessageType != emptyString {
 		logzioLog[fieldMessageType] = event.MessageType
 	}
@@ -100,7 +105,7 @@ func addAdditionalFields(logzioLog map[string]interface{}) {
 
 // sendLog converts the log to a byte array ([]byte) and writes to the logzioSender
 // returns the number of logs that successfully written to the logzio sender
-func sendLog(logzioLog map[string]interface{}) int {
+func sendLog(logzioLog map[string]interface{}, sender *logzio.LogzioSender) int {
 	logBytes, err := json.Marshal(logzioLog)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Error occurred while processing %s: %s", logzioLog, err.Error()))
@@ -109,7 +114,7 @@ func sendLog(logzioLog map[string]interface{}) int {
 	}
 
 	if logBytes != nil && len(logBytes) > 0 {
-		_, err = logzioSender.Write(logBytes)
+		_, err = sender.Write(logBytes)
 		if err != nil {
 			logger.Debug(fmt.Sprintf("Error for log %s", string(logBytes)))
 			logger.Error(fmt.Sprintf("Error occurred while writing log to logzio sender: %s", err.Error()))

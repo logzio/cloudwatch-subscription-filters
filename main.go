@@ -11,6 +11,9 @@ import (
 	"github.com/logzio/logzio-go"
 	"go.uber.org/zap"
 	"io/ioutil"
+	"main/aws_structures"
+	lp "main/logger"
+	"main/logs_processor"
 )
 
 var (
@@ -18,7 +21,7 @@ var (
 	logzioSender *logzio.LogzioSender
 )
 
-func HandleRequest(ctx context.Context, cwEventEncoded CWEventEncoded) {
+func HandleRequest(ctx context.Context, cwEventEncoded aws_structures.CWEventEncoded) {
 	err := initialize(cwEventEncoded)
 	if err != nil {
 		return
@@ -33,7 +36,7 @@ func HandleRequest(ctx context.Context, cwEventEncoded CWEventEncoded) {
 
 	logger.Debug(fmt.Sprintf("CW event: %v", cwEvent))
 	logger.Debug(fmt.Sprintf("Detected %d logs in event", len(cwEvent.LogEvents)))
-	processLogs(cwEvent)
+	logs_processor.ProcessLogs(cwEvent, logzioSender)
 	logger.Info("Finished lambda run, draining Logzio Sender")
 }
 
@@ -41,9 +44,9 @@ func main() {
 	lambda.Start(HandleRequest)
 }
 
-func initialize(cwEventEncoded CWEventEncoded) error {
+func initialize(cwEventEncoded aws_structures.CWEventEncoded) error {
 	var err error
-	logger = getLogger()
+	logger = lp.GetLogger()
 	logger.Info("Starting handling event...")
 	logger.Debug(fmt.Sprintf("Handling event: %+v", cwEventEncoded))
 	logger.Info("Setting up Logzio sender...")
@@ -58,9 +61,9 @@ func initialize(cwEventEncoded CWEventEncoded) error {
 	return nil
 }
 
-func decodeCwEvent(encodedData string) (CWEvent, error) {
+func decodeCwEvent(encodedData string) (aws_structures.CWEvent, error) {
 	decoded, err := base64.StdEncoding.DecodeString(encodedData)
-	var cwEvent CWEvent
+	var cwEvent aws_structures.CWEvent
 	if err != nil {
 		logger.Error(fmt.Sprintf("Error occurred while trying to decode data %s: %s", encodedData, err.Error()))
 		return cwEvent, err
