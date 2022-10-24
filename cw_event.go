@@ -19,6 +19,6 @@ type CWEvent struct {
 
 type LogEvent struct {
 	Id        string `json:"id"`
-	Timestamp string `json:"timestamp"`
+	Timestamp int64  `json:"timestamp"`
 	Message   string `json:"message"`
 }

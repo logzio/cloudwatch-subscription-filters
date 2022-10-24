@@ -37,11 +37,11 @@ func handleMessageField(logzioLog map[string]interface{}, messageField string) {
 	if err != nil {
 		logger.Info(fmt.Sprintf("Message %s cannot be parsed to JSON. Will be sent as a string", messageField))
 		logzioLog[fieldMessage] = messageField
-	}
-
-	logger.Debug("Successfully parsed message to JSON!")
-	for key, value := range tmpJson {
-		logzioLog[key] = value
+	} else {
+		logger.Debug("Successfully parsed message to JSON!")
+		for key, value := range tmpJson {
+			logzioLog[key] = value
+		}
 	}
 }
 
@@ -74,8 +74,8 @@ func addEventFields(logzioLog map[string]interface{}, event CWEvent, logIndex in
 }
 
 // addLogzioFields adds to logzioLog the required Logzio fields
-func addLogzioFields(logzioLog map[string]interface{}, ts string) {
-	if ts != emptyString {
+func addLogzioFields(logzioLog map[string]interface{}, ts int64) {
+	if ts != 0 {
 		logzioLog[fieldLogEventTimestamp] = ts
 	}
 
