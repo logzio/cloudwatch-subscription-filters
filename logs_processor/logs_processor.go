@@ -10,8 +10,10 @@ import (
 )
 
 var logger = lp.GetLogger()
+var sugLog = logger.Sugar()
 
 func ProcessLogs(cwEvent aws_structures.CWEvent, sender *logzio.LogzioSender) {
+	defer logger.Sync()
 	logsWritten := 0
 	for index, logEvent := range cwEvent.LogEvents {
 		if !shouldProcessLog(logEvent.Message) {
@@ -30,7 +32,7 @@ func ProcessLogs(cwEvent aws_structures.CWEvent, sender *logzio.LogzioSender) {
 		logsWritten += sendLog(logzioLog, sender)
 	}
 
-	logger.Info(fmt.Sprintf("Wrote %d logs to the Logzio Sender", logsWritten))
+	sugLog.Infof("Wrote %d logs to the Logzio Sender", logsWritten)
 }
 
 // handleMessageField checks if the message field in the event is JSON
@@ -40,10 +42,10 @@ func handleMessageField(logzioLog map[string]interface{}, messageField string) {
 	var tmpJson map[string]interface{}
 	err := json.Unmarshal([]byte(messageField), &tmpJson)
 	if err != nil {
-		logger.Info(fmt.Sprintf("Message %s cannot be parsed to JSON. Will be sent as a string", messageField))
+		sugLog.Infof("Message %s cannot be parsed to JSON. Will be sent as a string", messageField)
 		logzioLog[fieldMessage] = messageField
 	} else {
-		logger.Debug("Successfully parsed message to JSON!")
+		sugLog.Debug("Successfully parsed message to JSON!")
 		for key, value := range tmpJson {
 			logzioLog[key] = value
 		}
@@ -108,17 +110,17 @@ func addAdditionalFields(logzioLog map[string]interface{}) {
 func sendLog(logzioLog map[string]interface{}, sender *logzio.LogzioSender) int {
 	logBytes, err := json.Marshal(logzioLog)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Error occurred while processing %s: %s", logzioLog, err.Error()))
-		logger.Error("Log will be dropped")
+		sugLog.Errorf("Error occurred while processing %s: %s", logzioLog, err.Error())
+		sugLog.Error("Log will be dropped")
 		return 0
 	}
 
 	if logBytes != nil && len(logBytes) > 0 {
 		_, err = sender.Write(logBytes)
 		if err != nil {
-			logger.Debug(fmt.Sprintf("Error for log %s", string(logBytes)))
-			logger.Error(fmt.Sprintf("Error occurred while writing log to logzio sender: %s", err.Error()))
-			logger.Error("Log will be dropped")
+			sugLog.Debugf("Error for log %s", string(logBytes))
+			sugLog.Error("Error occurred while writing log to logzio sender: %s", err.Error())
+			sugLog.Error("Log will be dropped")
 			return 0
 		}
 
@@ -138,7 +140,7 @@ func shouldProcessLog(message string) bool {
 	} else {
 		for _, prefix := range prefixList {
 			if strings.HasPrefix(message, prefix) {
-				logger.Info("Found a Lambda platform log (START, END or REPORT). Ignoring.")
+				sugLog.Info("Found a Lambda platform log (START, END or REPORT). Ignoring.")
 				return !process
 			}
 		}
