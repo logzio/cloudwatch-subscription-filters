@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: 'AWS::Serverless-2016-10-31'
-Description: "AWS Lambda function that collects Cloudwatch Logs and sends them to Logz.io in bulk, over HTTP."
+Description: "AWS Lambda function that collects Cloudwatch Logs and sends them to Logz.io in bulk, over HTTPS."
 Parameters:
   logGroupName:
     Type: String
@@ -41,13 +41,6 @@ Parameters:
       - error
       - fatal
       - panic
-  compress:
-    Type: String
-    Description: "If true, the Lambda will send compressed logs. If false, the Lambda will send uncompressed logs."
-    Default: true
-    AllowedValues:
-      - true
-      - false
   sendAll:
     Type: String
     Description: "By default, we do not send logs of type START, END, REPORT. Choose true to send all log types."
@@ -90,7 +83,6 @@ Resources:
           LOGZIO_LISTENER: !Ref logzioListener
           LOGZIO_TYPE: !Ref logType
           LOG_LEVEL: !Ref logLevel
-          COMPRESS: !Ref compress
           SEND_ALL: !Ref sendAll
           ADDITIONAL_FIELDS: !Ref additionalFields
   CloudwatchShipperRole:

@@ -140,7 +140,7 @@ func shouldProcessLog(message string) bool {
 	} else {
 		for _, prefix := range prefixList {
 			if strings.HasPrefix(message, prefix) {
-				sugLog.Info("Found a Lambda platform log (START, END or REPORT). Ignoring.")
+				sugLog.Debug("Found a Lambda platform log (START, END or REPORT). Ignoring.")
 				return !process
 			}
 		}

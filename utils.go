@@ -5,16 +5,12 @@ import (
 	"github.com/logzio/logzio-go"
 	lp "main/logger"
 	"os"
-	"strconv"
 	"time"
 )
 
 const (
 	envLogzioToken    = "LOGZIO_TOKEN"
 	envLogzioListener = "LOGZIO_LISTENER"
-	envCompress       = "COMPRESS"
-
-	defaultCompress = true
 
 	emptyString      = ""
 	maxBulkSizeBytes = 10 * 1024 * 1024 // 10 MB
@@ -31,7 +27,6 @@ func getNewLogzioSender() (*logzio.LogzioSender, error) {
 	}
 
 	logLevel := lp.GetFuncLogLevel()
-	compress := getCompress()
 	var logzioLogger *logzio.LogzioSender
 	if logLevel == lp.LogLevelDebug {
 		logzioLogger, err = logzio.New(
@@ -42,7 +37,7 @@ func getNewLogzioSender() (*logzio.LogzioSender, error) {
 			logzio.SetinMemoryCapacity(maxBulkSizeBytes), //bytes
 			logzio.SetDrainDuration(time.Second*5),
 			logzio.SetDebug(os.Stdout),
-			logzio.SetCompress(compress),
+			logzio.SetCompress(true),
 		)
 	} else {
 		logzioLogger, err = logzio.New(
@@ -52,7 +47,7 @@ func getNewLogzioSender() (*logzio.LogzioSender, error) {
 			logzio.SetDebug(os.Stdout),
 			logzio.SetinMemoryCapacity(maxBulkSizeBytes), //bytes
 			logzio.SetDrainDuration(time.Second*5),
-			logzio.SetCompress(compress),
+			logzio.SetCompress(true),
 		)
 	}
 
@@ -79,21 +74,4 @@ func getListener() (string, error) {
 	}
 
 	return listener, nil
-}
-
-func getCompress() bool {
-	compressStr := os.Getenv(envCompress)
-	if compressStr == emptyString {
-		return defaultCompress
-	}
-
-	compress, err := strconv.ParseBool(compressStr)
-	if err != nil {
-		logger.Info(fmt.Sprintf("Cannot handle user input for %s, error: %s", envCompress, err.Error()))
-		logger.Info(fmt.Sprintf("Reverting for default value %t", defaultCompress))
-		return defaultCompress
-	}
-
-	return compress
-
 }
