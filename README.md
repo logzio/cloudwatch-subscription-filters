@@ -1,5 +1,6 @@
 # cloudwatch-shipper
-AWS Lambda function that ships Cloudwatch Logs to logz.io
+
+AWS Lambda function that ships Cloudwatch logs to logz.io
 
 ## Instructions
 
@@ -44,7 +45,7 @@ Specify the stack details as per the table below, check the checkboxes and selec
 
 Give the stack a few minutes to be deployed.
 
-Once new logs will be added to your chosen log group, they will be send to your Logz.io account.
+Once new logs are added to your chosen log group, they will be sent to your Logz.io account.
 
 
 ## Changelog

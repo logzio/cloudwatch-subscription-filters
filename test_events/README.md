@@ -1,7 +1,7 @@
 
 # Working with test events
 
-You can generate test events using the Logz.io Lambda test events generator and add these events to your Lambda function. This functionality is currently only available on Linux & macOS.
+You can generate test events using the Logz.io Lambda Test Events Generator and add these events to your Lambda function. This functionality is currently only available on Linux & macOS.
 
 
 ## 1. Generate a test event
