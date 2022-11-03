@@ -3,7 +3,6 @@ package logs_processor
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/logzio/logzio-go"
 	"main/aws_structures"
 	lp "main/logger"
 	"strings"
@@ -12,8 +11,13 @@ import (
 var logger = lp.GetLogger()
 var sugLog = logger.Sugar()
 
-func ProcessLogs(cwEvent aws_structures.CWEvent, sender *logzio.LogzioSender) {
+func ProcessLogs(cwEvent aws_structures.CWEvent) error {
 	defer logger.Sync()
+	logzioSender, err := initializeSender()
+	if err != nil {
+		return err
+	}
+
 	logsWritten := 0
 	for index, logEvent := range cwEvent.LogEvents {
 		if !shouldProcessLog(logEvent.Message) {
@@ -29,10 +33,14 @@ func ProcessLogs(cwEvent aws_structures.CWEvent, sender *logzio.LogzioSender) {
 
 		addAdditionalFields(logzioLog)
 
-		logsWritten += sendLog(logzioLog, sender)
+		err = sendLog(logzioLog, logzioSender)
+		if err == nil {
+			logsWritten += 1
+		}
 	}
 
 	sugLog.Infof("Wrote %d logs to the Logzio Sender", logsWritten)
+	return nil
 }
 
 // handleMessageField checks if the message field in the event is JSON
@@ -106,45 +114,29 @@ func addAdditionalFields(logzioLog map[string]interface{}) {
 }
 
 // sendLog converts the log to a byte array ([]byte) and writes to the logzioSender
-// returns the number of logs that successfully written to the logzio sender
-func sendLog(logzioLog map[string]interface{}, sender *logzio.LogzioSender) int {
+func sendLog(logzioLog map[string]interface{}, sender LogzioSender) error {
 	logBytes, err := json.Marshal(logzioLog)
 	if err != nil {
-		sugLog.Errorf("Error occurred while processing %s: %s", logzioLog, err.Error())
-		sugLog.Error("Log will be dropped")
-		return 0
+		return fmt.Errorf("Log will be dropped - error occurred while processing %s: %s", logzioLog, err.Error())
 	}
 
-	if logBytes != nil && len(logBytes) > 0 {
-		_, err = sender.Write(logBytes)
-		if err != nil {
-			sugLog.Debugf("Error for log %s", string(logBytes))
-			sugLog.Error("Error occurred while writing log to logzio sender: %s", err.Error())
-			sugLog.Error("Log will be dropped")
-			return 0
-		}
-
-		return 1
-	}
-
-	return 0
+	return sender.SendToLogzio(logBytes)
 }
 
 // processLog returns whether a log should be processed or not.
 // Based on user input - we can filter out lambda platform logs (START, END, REPORT).
 func shouldProcessLog(message string) bool {
-	process := true
 	prefixList := []string{prefixStart, prefixEnd, prefixReport}
 	if getSendAll() {
-		return process
+		return true
 	} else {
 		for _, prefix := range prefixList {
 			if strings.HasPrefix(message, prefix) {
 				sugLog.Debug("Found a Lambda platform log (START, END or REPORT). Ignoring.")
-				return !process
+				return false
 			}
 		}
 
-		return process
+		return true
 	}
 }

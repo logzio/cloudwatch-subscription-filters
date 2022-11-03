@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/logzio/logzio-go"
 	"go.uber.org/zap"
 	"io/ioutil"
 	"main/aws_structures"
@@ -16,9 +15,8 @@ import (
 )
 
 var (
-	logger       *zap.Logger
-	sugLog       *zap.SugaredLogger
-	logzioSender *logzio.LogzioSender
+	logger *zap.Logger
+	sugLog *zap.SugaredLogger
 )
 
 func HandleRequest(ctx context.Context, cwEventEncoded aws_structures.CWEventEncoded) {
@@ -27,7 +25,6 @@ func HandleRequest(ctx context.Context, cwEventEncoded aws_structures.CWEventEnc
 		return
 	}
 	defer logger.Sync()
-	defer logzioSender.Drain()
 	sugLog.Debugf("CW event encoded: %v", cwEventEncoded)
 	cwEvent, err := decodeCwEvent(cwEventEncoded.Awslogs.Data)
 	if err != nil {
@@ -37,8 +34,12 @@ func HandleRequest(ctx context.Context, cwEventEncoded aws_structures.CWEventEnc
 
 	sugLog.Debugf("CW event: %v", cwEvent)
 	sugLog.Debugf("Detected %d logs in event", len(cwEvent.LogEvents))
-	logs_processor.ProcessLogs(cwEvent, logzioSender)
-	sugLog.Info("Finished lambda run, draining Logzio Sender")
+	err = logs_processor.ProcessLogs(cwEvent)
+	if err != nil {
+		sugLog.Error(err.Error())
+	}
+
+	sugLog.Info("Finished lambda run")
 }
 
 func main() {
@@ -52,7 +53,6 @@ func initialize(cwEventEncoded aws_structures.CWEventEncoded) error {
 	sugLog.Info("Starting handling event...")
 	sugLog.Debugf("Handling event: %+v", cwEventEncoded)
 	sugLog.Info("Setting up Logzio sender...")
-	logzioSender, err = getNewLogzioSender()
 	if err != nil {
 		sugLog.Errorf("Error occurred while trying to setup Logzio sender: %s", err.Error())
 		sugLog.Error("Aborting")

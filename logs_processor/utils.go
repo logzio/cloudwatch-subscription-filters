@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -18,12 +19,16 @@ const (
 	fieldLogEventTimestamp   = "@timestamp"
 	fieldType                = "type"
 
+	envLogzioToken      = "LOGZIO_TOKEN"
+	envLogzioListener   = "LOGZIO_LISTENER"
 	envLogzioType       = "LOGZIO_TYPE"
 	envAdditionalFields = "ADDITIONAL_FIELDS"
 	envSendAll          = "SEND_ALL"
+	envTimeout          = "TIMEOUT"
 
 	defaultType    = "logzio_cloudwatch_lambda"
 	defaultSendAll = false
+	defaultTimeout = 10
 
 	prefixStart  = "START"
 	prefixEnd    = "END"
@@ -67,4 +72,38 @@ func getSendAll() bool {
 	}
 
 	return sendAll
+}
+
+func getToken() (string, error) {
+	token := os.Getenv(envLogzioToken)
+	if len(token) == 0 {
+		return emptyString, fmt.Errorf("%s should be set", envLogzioToken)
+	}
+
+	return token, nil
+}
+
+func getListener() (string, error) {
+	listener := os.Getenv(envLogzioListener)
+	if len(listener) == 0 {
+		return emptyString, fmt.Errorf("%s must be set", envLogzioListener)
+	}
+
+	return listener, nil
+}
+
+func getTimeout() time.Duration {
+	timeoutStr := os.Getenv(envTimeout)
+	if timeoutStr == emptyString {
+		return defaultTimeout
+	}
+
+	timeoutNum, err := strconv.Atoi(timeoutStr)
+	if err != nil {
+		sugLog.Warnf("Could not convert properly timeout entered by user: %s", err.Error())
+		sugLog.Infof("Reverting to default timeout: %d", defaultTimeout)
+		timeoutNum = defaultTimeout
+	}
+
+	return time.Second * time.Duration(timeoutNum)
 }
