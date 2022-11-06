@@ -32,7 +32,7 @@ func initializeSender() (LogzioSender, error) {
 	}
 
 	return LogzioSender{
-		Url:        fmt.Sprintf("%s/token=%s&type=%s", listener, token, getType()),
+		Url:        fmt.Sprintf("%s?token=%s&type=%s", listener, token, getType()),
 		HttpClient: client,
 	}, nil
 }
@@ -57,7 +57,7 @@ func (l *LogzioSender) SendToLogzio(bytesToSend []byte) error {
 	toBackOff := false
 	for attempt := 0; attempt < sendRetries; attempt++ {
 		if toBackOff {
-			fmt.Printf("Failed to send logs, trying again in %v\n", backOff)
+			sugLog.Warnf("Failed to send logs, trying again in %v", backOff)
 			time.Sleep(backOff)
 			backOff *= 2
 		}
@@ -93,17 +93,18 @@ func (l *LogzioSender) shouldRetry(statusCode int) bool {
 		retry = false
 	}
 
-	sugLog.Info("Got HTTP %d. Should retry? %t", statusCode, retry)
+	sugLog.Debugf("Got HTTP status code %d. Should retry? %t", statusCode, retry)
 
 	return retry
 }
 
 func (l *LogzioSender) makeHttpRequest(data bytes.Buffer) int {
-	req, err := http.NewRequest("POST", l.Url, &data)
+	req, err := http.NewRequest(http.MethodPost, l.Url, &data)
 	req.Header.Add("Content-Encoding", "gzip")
+	sugLog.Debug("Sending bulk of %v bytes", data)
 	resp, err := l.HttpClient.Do(req)
 	if err != nil {
-		fmt.Printf("Error sending logs to %s %s\n", l.Url, err)
+		sugLog.Errorf("Error sending logs to %s %s", l.Url, err)
 		return 400
 	}
 
@@ -111,7 +112,7 @@ func (l *LogzioSender) makeHttpRequest(data bytes.Buffer) int {
 	statusCode := resp.StatusCode
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Printf("Error reading response body: %v", err)
+		sugLog.Errorf("Error reading response body: %s", err.Error())
 	}
 
 	if statusCode < 200 || statusCode > 299 {
