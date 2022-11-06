@@ -52,6 +52,18 @@ Parameters:
     Type: "String"
     Description: "Enriches the CloudWatch events with custom properties at ship time. The format is `key1=value1;key2=value2`. By default is empty."
     Default: ""
+  lambdaMemorySize:
+    Type: "Number"
+    Description: "Memory size for the Lambda function"
+    Default: 512
+  lambdaTimeout:
+    Type: "Number"
+    Description: "Timeout for the Lambda function in seconds"
+    Default: 60
+  logzioCallsTimeout:
+    Type: "Number"
+    Description: "Timeout for the HTTP requests sent to Logz.io, in seconds"
+    Default: 10
 
 Outputs:
   LogzioCloudwatchShipperArn:
@@ -68,8 +80,8 @@ Resources:
         Bucket: logzio-aws-integrations-us-east-1
         Key: cloudwatch-shipper/1.0.0/function.zip
       FunctionName: !Ref AWS::StackName
-      MemorySize: 512
-      Timeout: 60
+      MemorySize: !Ref lambdaMemorySize
+      Timeout: !Ref lambdaTimeout
       Role: !GetAtt CloudwatchShipperRole.Arn
       Events:
         CWLog:
