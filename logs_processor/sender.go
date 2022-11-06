@@ -101,7 +101,7 @@ func (l *LogzioSender) shouldRetry(statusCode int) bool {
 func (l *LogzioSender) makeHttpRequest(data bytes.Buffer) int {
 	req, err := http.NewRequest(http.MethodPost, l.Url, &data)
 	req.Header.Add("Content-Encoding", "gzip")
-	sugLog.Debug("Sending bulk of %v bytes", data)
+	sugLog.Debugf("Sending bulk of %v bytes", data)
 	resp, err := l.HttpClient.Do(req)
 	if err != nil {
 		sugLog.Errorf("Error sending logs to %s %s", l.Url, err)
