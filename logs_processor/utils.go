@@ -97,7 +97,8 @@ func getListener() (string, error) {
 func getTimeout() time.Duration {
 	timeoutStr := os.Getenv(envTimeout)
 	if timeoutStr == emptyString {
-		return defaultTimeout
+		sugLog.Infof("Using default timeout %d", defaultTimeout)
+		return time.Duration(defaultTimeout) * time.Second
 	}
 
 	timeoutNum, err := strconv.Atoi(timeoutStr)
@@ -107,5 +108,7 @@ func getTimeout() time.Duration {
 		timeoutNum = defaultTimeout
 	}
 
-	return time.Second * time.Duration(timeoutNum)
+	timeout := time.Duration(timeoutNum) * time.Second
+	sugLog.Debugf("setting timeout: %v", timeout)
+	return timeout
 }

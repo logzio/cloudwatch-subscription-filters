@@ -31,10 +31,14 @@ func initializeSender() (LogzioSender, error) {
 		Timeout: getTimeout(),
 	}
 
-	return LogzioSender{
+	sender := LogzioSender{
 		Url:        fmt.Sprintf("%s?token=%s&type=%s", listener, token, getType()),
 		HttpClient: client,
-	}, nil
+	}
+
+	sugLog.Debugf("Using sender: %v", sender)
+
+	return sender, nil
 }
 
 func (l *LogzioSender) SendToLogzio(bytesToSend []byte) error {
@@ -61,6 +65,7 @@ func (l *LogzioSender) SendToLogzio(bytesToSend []byte) error {
 			time.Sleep(backOff)
 			backOff *= 2
 		}
+		sugLog.Debugf("Trying to send log: %s", string(bytesToSend))
 		statusCode = l.makeHttpRequest(compressedBuf)
 		if l.shouldRetry(statusCode) {
 			toBackOff = true
@@ -101,7 +106,7 @@ func (l *LogzioSender) shouldRetry(statusCode int) bool {
 func (l *LogzioSender) makeHttpRequest(data bytes.Buffer) int {
 	req, err := http.NewRequest(http.MethodPost, l.Url, &data)
 	req.Header.Add("Content-Encoding", "gzip")
-	sugLog.Debugf("Sending bulk of %v bytes", data)
+	sugLog.Debugf("Sending bulk of %d bytes", data.Len())
 	resp, err := l.HttpClient.Do(req)
 	if err != nil {
 		sugLog.Errorf("Error sending logs to %s %s", l.Url, err)
