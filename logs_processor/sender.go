@@ -85,6 +85,7 @@ func (l *LogzioSender) shouldRetry(statusCode int) bool {
 	case http.StatusNotFound:
 		retry = false
 	case http.StatusUnauthorized:
+		sugLog.Error("Please check your Logz.io logs shipping token!")
 		retry = false
 	case http.StatusForbidden:
 		retry = false
@@ -113,7 +114,9 @@ func (l *LogzioSender) makeHttpRequest(data bytes.Buffer) int {
 		fmt.Printf("Error reading response body: %v", err)
 	}
 
-	sugLog.Debugf("Response body: %s", string(respBody))
+	if statusCode < 200 || statusCode > 299 {
+		sugLog.Errorf("Response from listener: %s", string(respBody))
+	}
 
 	return statusCode
 }
