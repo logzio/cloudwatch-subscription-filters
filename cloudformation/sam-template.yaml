@@ -66,7 +66,7 @@ Resources:
       Handler: main
       CodeUri:
         Bucket: logzio-aws-integrations-us-east-1
-        Key: cloudwatch-shipper/0.0.1/function.zip
+        Key: cloudwatch-shipper/1.0.0/function.zip
       FunctionName: !Ref AWS::StackName
       MemorySize: 512
       Timeout: 60

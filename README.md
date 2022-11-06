@@ -50,4 +50,4 @@ Once new logs are added to your chosen log group, they will be sent to your Logz
 
 ## Changelog
 
-- **0.0.1**: Initial release.
+- **1.0.0**: Initial release.
