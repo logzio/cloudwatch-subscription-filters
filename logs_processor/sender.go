@@ -32,7 +32,7 @@ func initializeSender() (LogzioSender, error) {
 	}
 
 	return LogzioSender{
-		Url:        fmt.Sprintf("%s/token=%s", listener, token),
+		Url:        fmt.Sprintf("%s/token=%s&type=%s", listener, token, getType()),
 		HttpClient: client,
 	}, nil
 }

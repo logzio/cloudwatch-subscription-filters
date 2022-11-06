@@ -71,23 +71,6 @@ func TestAddLogzioFieldsEmptyTimestamp(t *testing.T) {
 	assert.NotContains(t, logzioLog, fieldLogEventTimestamp)
 }
 
-func TestAddLogzioFieldsType(t *testing.T) {
-	logType := "my_type"
-	os.Setenv(envLogzioType, logType)
-	logzioLog := make(map[string]interface{})
-	addLogzioFields(logzioLog, 0)
-	assert.Contains(t, logzioLog, fieldType)
-	assert.Equal(t, logzioLog[fieldType].(string), logType)
-}
-
-func TestAddLogzioFieldsEmptyType(t *testing.T) {
-	os.Setenv(envLogzioType, "")
-	logzioLog := make(map[string]interface{})
-	addLogzioFields(logzioLog, 0)
-	assert.Contains(t, logzioLog, fieldType)
-	assert.Equal(t, logzioLog[fieldType].(string), defaultType)
-}
-
 func TestAddAdditionalFields(t *testing.T) {
 	afStr := "key1=val1;key2=val2"
 	os.Setenv(envAdditionalFields, afStr)

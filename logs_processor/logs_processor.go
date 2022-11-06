@@ -36,6 +36,8 @@ func ProcessLogs(cwEvent aws_structures.CWEvent) error {
 		err = sendLog(logzioLog, logzioSender)
 		if err == nil {
 			logsWritten += 1
+		} else {
+			sugLog.Error(err.Error())
 		}
 	}
 
@@ -93,8 +95,6 @@ func addLogzioFields(logzioLog map[string]interface{}, ts int64) {
 	if ts != 0 {
 		logzioLog[fieldLogEventTimestamp] = ts
 	}
-
-	logzioLog[fieldType] = getType()
 }
 
 // addAdditionalFields adds custom fields added by the user
@@ -118,6 +118,11 @@ func sendLog(logzioLog map[string]interface{}, sender LogzioSender) error {
 	logBytes, err := json.Marshal(logzioLog)
 	if err != nil {
 		return fmt.Errorf("Log will be dropped - error occurred while processing %s: %s", logzioLog, err.Error())
+	}
+
+	if len(logBytes) > maxLogBytesSize {
+		sugLog.Debug("log dropped: %s", string(logBytes))
+		return fmt.Errorf("Log will be dropped - log size is bigger than %d", maxLogBytesSize)
 	}
 
 	return sender.SendToLogzio(logBytes)

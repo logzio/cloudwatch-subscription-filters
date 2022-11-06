@@ -34,6 +34,8 @@ const (
 	prefixEnd    = "END"
 	prefixReport = "REPORT"
 
+	maxLogBytesSize = 500000
+
 	customFieldSeparator = ";"
 
 	emptyString = ""
