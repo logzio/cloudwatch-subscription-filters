@@ -1,4 +1,4 @@
-package main
+package cloudwatch_shipper
 
 import (
 	"os"
