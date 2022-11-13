@@ -1,4 +1,4 @@
-package cloudwatch_shipper
+package main
 
 import "time"
 
