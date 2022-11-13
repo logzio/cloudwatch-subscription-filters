@@ -41,6 +41,9 @@ func HandleRequest(ctx context.Context, event map[string]interface{}) (string, e
 		if event["RequestType"].(string) == "Create" {
 			sugLog.Debug("Detected Cloudformation initialization event")
 			lambda.Start(cfn.LambdaWrap(customResourceRun))
+		} else if event["RequestType"].(string) == "Delete" {
+			sugLog.Debug("Detected Cloudformation delete event")
+			lambda.Start(cfn.LambdaWrap(customResourceRunDelete))
 		} else {
 			lambda.Start(cfn.LambdaWrap(customResourceRunDoNothing))
 		}
@@ -79,8 +82,39 @@ func customResourceRun(ctx context.Context, event cfn.Event) (physicalResourceID
 	return
 }
 
-// Wrapper for first invocation from cloud formation custom resource - for read, update, delete
+// Wrapper for invocation from cloudformation custom resource - for read, update
 func customResourceRunDoNothing(ctx context.Context, event cfn.Event) (physicalResourceID string, data map[string]interface{}, err error) {
+	return
+}
+
+// Wrapper for invocation from cloudformation custom resource - delete
+func customResourceRunDelete(ctx context.Context, event cfn.Event) (physicalResourceID string, data map[string]interface{}, err error) {
+	sess, err := getSession()
+	if err != nil {
+		sugLog.Error("Error while creating session: ", err.Error())
+	}
+
+	deleted := make([]string, 0)
+	servicesToDelete := getServices()
+	if servicesToDelete != nil {
+		newDeleted, err := deleteServices(sess, servicesToDelete, deleted)
+		deleted = append(deleted, newDeleted...)
+		if err != nil {
+			sugLog.Error(err.Error())
+		}
+	}
+
+	pathsToDelete := getCustomPaths()
+	if pathsToDelete != nil {
+		newDeleted, err := deleteCustom(sess, pathsToDelete)
+		deleted = append(deleted, newDeleted...)
+		if err != nil {
+			sugLog.Error(err.Error())
+		}
+	}
+
+	sugLog.Debug("Deleted subscription filters for the following log groups: ", deleted)
+
 	return
 }
 
@@ -90,7 +124,7 @@ func newLogGroupCreated(logGroup string) {
 		logGroup == lambdaPrefix+os.Getenv(envFunctionName) {
 		return
 	}
-	servicesToAdd := getServicesToAdd()
+	servicesToAdd := getServices()
 	var added []string
 	if servicesToAdd != nil {
 		serviceToPrefix := getServicesMap()
@@ -127,9 +161,9 @@ func handleFirstInvocation() error {
 		return err
 	}
 	added := make([]string, 0)
-	servicesToAdd := getServicesToAdd()
+	servicesToAdd := getServices()
 	if servicesToAdd != nil {
-		newAdded, err := addServices(sess, servicesToAdd, added)
+		newAdded, err := addServices(sess, servicesToAdd)
 		added = append(added, newAdded...)
 		if err != nil {
 			sugLog.Error(err.Error())
@@ -200,7 +234,7 @@ func addCustom(sess *session.Session, customGroup, added []string) ([]string, er
 	return newAdded, nil
 }
 
-func addServices(sess *session.Session, servicesToAdd, added []string) ([]string, error) {
+func addServices(sess *session.Session, servicesToAdd []string) ([]string, error) {
 	logsClient := cloudwatchlogs.New(sess)
 	logGroups := getLogGroups(servicesToAdd, logsClient)
 	if len(logGroups) > 0 {
@@ -215,7 +249,7 @@ func addServices(sess *session.Session, servicesToAdd, added []string) ([]string
 func putSubscriptionFilter(logGroups []string, logsClient *cloudwatchlogs.CloudWatchLogs) []string {
 	destinationArn := os.Getenv(envShipperFuncArn)
 	filterPattern := ""
-	filterName := "logzio_cw_shipper"
+	filterName := subscriptionFilterName
 	added := make([]string, 0)
 	for _, logGroup := range logGroups {
 		_, err := logsClient.PutSubscriptionFilter(&cloudwatchlogs.PutSubscriptionFilterInput{
@@ -301,4 +335,43 @@ func getSession() (*session.Session, error) {
 	}
 
 	return sess, nil
+}
+
+func deleteServices(sess *session.Session, servicesToAdd, deleted []string) ([]string, error) {
+	logsClient := cloudwatchlogs.New(sess)
+	logGroups := getLogGroups(servicesToAdd, logsClient)
+	if len(logGroups) > 0 {
+		sugLog.Debug("Detected the following services: ", logGroups)
+		newAdded := deleteSubscriptionFilter(logGroups, logsClient)
+		return newAdded, nil
+	} else {
+		return nil, fmt.Errorf("Could not delete any log groups")
+	}
+}
+
+func deleteSubscriptionFilter(logGroups []string, logsClient *cloudwatchlogs.CloudWatchLogs) []string {
+	filterName := subscriptionFilterName
+	deleted := make([]string, 0)
+	for _, logGroup := range logGroups {
+		_, err := logsClient.DeleteSubscriptionFilter(&cloudwatchlogs.DeleteSubscriptionFilterInput{
+			FilterName:   &filterName,
+			LogGroupName: &logGroup,
+		})
+
+		if err != nil {
+			sugLog.Error("Error while trying to delete subscription filter for ", logGroup, ": ", err.Error())
+			continue
+		}
+
+		deleted = append(deleted, logGroup)
+	}
+
+	return deleted
+}
+
+func deleteCustom(sess *session.Session, customGroup []string) ([]string, error) {
+	logsClient := cloudwatchlogs.New(sess)
+	newDeleted := deleteSubscriptionFilter(customGroup, logsClient)
+
+	return newDeleted, nil
 }

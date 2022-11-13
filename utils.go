@@ -14,12 +14,13 @@ const (
 	envCustomGroups   = "CUSTOM_GROUPS"
 	envAwsPartition   = "AWS_PARTITION"
 
-	valuesSeparator = ";"
-	emptyString     = ""
-	lambdaPrefix    = "/aws/lambda/"
+	valuesSeparator        = ";"
+	emptyString            = ""
+	lambdaPrefix           = "/aws/lambda/"
+	subscriptionFilterName = "logzio_cw_shipper"
 )
 
-func getServicesToAdd() []string {
+func getServices() []string {
 	servicesStr := os.Getenv(envServices)
 	if servicesStr == emptyString {
 		return nil

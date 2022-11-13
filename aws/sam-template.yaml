@@ -197,6 +197,7 @@ Resources:
                 Action:
                   - 'logs:DescribeLogGroups'
                   - 'logs:PutSubscriptionFilter'
+                  - 'logs:DeleteSubscriptionFilter'
                 Resource:
                   - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*'
                   - !GetAtt logzioCloudwatchLogsLambda.Arn
