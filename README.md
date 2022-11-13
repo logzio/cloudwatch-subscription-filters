@@ -1,12 +1,16 @@
 # Cloudwatch shipper with log groups detection
 
-This project deploys an instrumentation that allows shipping Cloudwatch logs to Logz.io.
+This project deploys instrumentation that allows shipping Cloudwatch logs to Logz.io.
 
 ## Overview:
 
 This project will create 2 Lambda functions:
+
 - **Shipper function**: this function is responsible for processing and shipping the Cloudwatch logs to Logz.io. [See here the function's repo](https://github.com/logzio/logzio_aws_serverless/tree/master/python3/cloudwatch).
-- **Trigger function**: this function is responsible for adding subscription filters to the desired Cloudwatch log groups, to trigger the shipper function. On its first run - it will add subscription filters to the log groups chosen by the user. If a user chose a service, it will also trigger whenever a log group is created, and if it's a match - will add a subscription filter for it.
+
+- **Trigger function**: this function is responsible for adding subscription filters to the desired Cloudwatch log groups, to trigger the shipper function.
+
+When the Trigger function is run for the first time, it will add subscription filters to the log groups chosen by the user. If the user chose a service, the Trigger function will also get triggered whenever a log group is created to check if this log group is for a service that is one of the services that the user has selected. If yes, it will add a subscription filter to it.
 
 ## Instructions
 
@@ -73,10 +77,9 @@ Once new logs are added to your chosen log group, they will be sent to your Logz
 
 ##### ⚠️ Important note ⚠️
 
-If you've used the `services` field, you'll have to **wait 5 minutes** before creating new log groups for your chosen services. This is due to cold start and custom resource invocation, that can cause the trigger lambda to behave unexpectedly.
+If you've used the `services` field, you'll have to **wait 5 minutes** before creating new log groups for your chosen services. This is due to cold start and custom resource invocation, that can cause the cause Lambda to behave unexpectedly.
 
 
 ### Changelog:
 
 - **1.0.0**: Initial release.
-
