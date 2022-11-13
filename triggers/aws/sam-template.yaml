@@ -57,8 +57,7 @@ Parameters:
   shipperLambdaTimeout:
     Type: Number
     Description: >-
-      The amount of seconds that Lambda allows a function to run before stopping
-      it, for the shipper function.
+      The number of seconds that Lambda allows a function to run before stopping it, for the shipper function.
     Default: 60
   shipperLambdaMemory:
     Type: Number
@@ -73,8 +72,7 @@ Parameters:
   triggerLambdaTimeout:
     Type: Number
     Description: >-
-      The amount of seconds that Lambda allows a function to run before stopping
-      it, for the trigger function.
+      The amount of seconds that Lambda allows a function to run before stopping it, for the trigger function.
     Default: 60
   triggerLambdaMemory:
     Type: Number
