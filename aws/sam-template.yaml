@@ -1,0 +1,246 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: >-
+  Ship your Cloudwatch logs to Logz.io.
+  This stack deploys a Lambda function that ships Cloudwatch logs, and a functions that adds log groups to for the shipper to follow.
+Parameters:
+  logzioListener:
+    Type: String
+    Description: 'The Logz.io listener URL for your region. You can find explanations here: https://docs.logz.io/user-guide/accounts/account-region.html'
+    Default: 'https://listener.logz.io:8071'
+    AllowedValues:
+      - 'https://listener.logz.io:8071'
+      - 'https://listener-au.logz.io:8071'
+      - 'https://listener-ca.logz.io:8071'
+      - 'https://listener-eu.logz.io:8071'
+      - 'https://listener-nl.logz.io:8071'
+      - 'https://listener-uk.logz.io:8071'
+      - 'https://listener-wa.logz.io:8071'
+  logzioToken:
+    Type: String
+    Description: 'Your Logz.io log shipping token'
+    MinLength: 1
+  logzioType:
+    Type: String
+    Description: >- 
+      The log type you'll use with this Lambda.
+      Please note that you should create a new Lambda for each log type you use.
+      This can be a built-in log type, or your custom log type
+    Default: 'logzio_cloudwatch_lambda'
+  logzioFormat:
+    Type: String
+    Description: >-
+      json or text.
+      If json, the lambda function will attempt to parse the message field as JSON
+      and populate the event data with the parsed fields."
+    Default: 'text'
+    AllowedValues:
+      - 'text'
+      - 'json'
+  logzioCompress:
+    Type: String
+    Description: If true, the Lambda will send compressed logs. If false, the Lambda will send uncompressed logs
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  logzioSendAll:
+    Type: String
+    Description: By default, we do not send logs of type START, END, REPORT. Choose true to send all log types.
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  logzioEnrich:
+    Type: String
+    Description: Enriches the CloudWatch events with custom properties at ship time. The format is `key1=value1;key2=value2`. By default is empty.
+  shipperLambdaTimeout:
+    Type: Number
+    Description: >-
+      The number of seconds that Lambda allows a function to run before stopping it, for the shipper function.
+    Default: 60
+  shipperLambdaMemory:
+    Type: Number
+    Description: Shipper function's allocated CPU proportional to the memory configured, in MB.
+    Default: 512
+  services:
+    Type: String
+    Description: A semicolon-seperated list of services you want to collect logs from
+  customLogGroups:
+    Type: String
+    Description: A semicolon-seperated list of custom log groups you want to collect logs from
+  triggerLambdaTimeout:
+    Type: Number
+    Description: >-
+      The amount of seconds that Lambda allows a function to run before stopping it, for the trigger function.
+    Default: 60
+  triggerLambdaMemory:
+    Type: Number
+    Description: Trigger function's allocated CPU proportional to the memory configured, in MB.
+    Default: 512
+  triggerLambdaLogLevel:
+    Type: String
+    Description: 'Log level for the Lambda function. Can be one of: debug, info, warn, error, fatal, panic.'
+    Default: info
+    AllowedValues:
+      - debug
+      - info
+      - warn
+      - error
+      - fatal
+      - panic
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+            default: "Shipper config"
+        Parameters:
+          - logzioListener
+          - logzioToken
+          - logzioType
+          - logzioFormat
+          - logzioCompress
+          - logzioSendAll
+          - logzioEnrich
+          - shipperLambdaTimeout
+          - shipperLambdaMemory
+      - Label:
+          default: "Trigger config"
+        Parameters:
+          - services
+          - customLogGroups
+          - triggerLambdaTimeout
+          - triggerLambdaMemory
+          - triggerLambdaLogLevel
+
+Conditions:
+  createEventbridgeTrigger: !Not
+    - !Equals
+      - !Ref services
+      - ''
+
+Resources:
+  logzioCloudwatchLogsLambda:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Runtime: python3.9
+      Handler: lambda_function.lambda_handler
+      CodeUri:
+        Bucket: logzio-aws-integrations-us-east-1
+        Key: cloudwatch-auto-deployment/0.0.3/logzio-cloudwatch.zip
+      FunctionName: !Join ['-', [!Ref AWS::StackName, 'shipper-func']]
+      MemorySize: !Ref shipperLambdaMemory
+      Timeout: !Ref shipperLambdaTimeout
+      Environment:
+        Variables:
+          LISTENER_URL: !Ref logzioListener
+          TOKEN: !Ref logzioToken
+          TYPE: !Ref logzioType
+          FORMAT: !Ref logzioFormat
+          COMPRESS: !Ref logzioCompress
+          ENRICH: !Ref logzioEnrich
+          SENDALL: !Ref logzioSendAll
+  triggerLambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    DependsOn: logzioCloudwatchLogsLambda
+    Properties:
+      Code:
+        S3Bucket: logzio-aws-integrations-us-east-1
+        S3Key: cloudwatch-shipper-trigger/1.0.0/function.zip
+      FunctionName:  !Join ['-', [!Ref AWS::StackName, 'trigger-func']]
+      Handler: bootstrap
+      Runtime: provided.al2
+      Role: !GetAtt triggerLambdaRole.Arn
+      Timeout: !Ref triggerLambdaTimeout
+      MemorySize: !Ref triggerLambdaMemory
+      ReservedConcurrentExecutions: 1
+      Environment:
+        Variables:
+          SERVICES: !Ref services
+          CUSTOM_GROUPS: !Ref customLogGroups
+          ACCOUNT_ID: !Ref AWS::AccountId
+          AWS_PARTITION: !Ref AWS::Partition
+          SHIPPER_ARN: !GetAtt logzioCloudwatchLogsLambda.Arn
+          LOG_LEVEL: !Ref triggerLambdaLogLevel
+  triggerLambdaRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Join ['-', ['LogzioCwTriggerRole', !Select [4, !Split ['-', !Select [2, !Split ['/', !Ref AWS::StackId]]]]]]
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: !Join ['-', ['LogzioCwTriggerPolicy', !Select [4, !Split ['-', !Select [2, !Split ['/', !Ref AWS::StackId]]]]]]
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'lambda:AddPermission'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'logs:DescribeLogGroups'
+                  - 'logs:PutSubscriptionFilter'
+                  - 'logs:DeleteSubscriptionFilter'
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*'
+                  - !GetAtt logzioCloudwatchLogsLambda.Arn
+  triggerPrimerInvoke:
+    Type: AWS::CloudFormation::CustomResource
+    DependsOn: triggerLambdaFunction
+    Version: '1.0'
+    Properties:
+      ServiceToken: !GetAtt triggerLambdaFunction.Arn
+  logGroupCreationEvent:
+    Condition: createEventbridgeTrigger
+    DependsOn: triggerLambdaFunction
+    Type: AWS::Events::Rule
+    Properties:
+      Description: 'This event is triggered by the creation of a new log group, and triggers the Logz.io Cloudwatch trigger function.'
+      EventPattern:
+        source:
+          - 'aws.logs'
+        detail-type:
+          - 'AWS API Call via CloudTrail'
+        detail:
+          eventSource:
+            - 'logs.amazonaws.com'
+          eventName:
+            - 'CreateLogGroup'
+      Name: !Join [ '-', [ 'LogGroupCreatedLambdaTrigger', !Select [ 4, !Split [ '-', !Select [ 2, !Split [ '/', !Ref AWS::StackId ] ] ] ] ] ]
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt triggerLambdaFunction.Arn
+          Id: 'LogzioCloudwatchTriggerFunction'
+  permissionForEventsToInvokeLambda:
+    Condition: createEventbridgeTrigger
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref triggerLambdaFunction
+      Action: 'lambda:InvokeFunction'
+      Principal: 'events.amazonaws.com'
+      SourceArn: !GetAtt logGroupCreationEvent.Arn
+
+Outputs:
+  shipperFunctionArn:
+    Description: "Logz.io CW shipper lambda ARN"
+    Value: !GetAtt logzioCloudwatchLogsLambda.Arn
+  triggerFunctionArn:
+    Description: "Logz.io CW trigger lambda ARN"
+    Value: !GetAtt triggerLambdaFunction.Arn
