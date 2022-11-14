@@ -65,10 +65,10 @@ Parameters:
     Default: 512
   services:
     Type: String
-    Description: A semicolon-seperated list of services you want to collect logs from
+    Description: A comma-seperated list of services you want to collect logs from
   customLogGroups:
     Type: String
-    Description: A semicolon-seperated list of custom log groups you want to collect logs from
+    Description: A comma-seperated list of custom log groups you want to collect logs from
   triggerLambdaTimeout:
     Type: Number
     Description: >-

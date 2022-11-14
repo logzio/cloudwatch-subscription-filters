@@ -14,7 +14,7 @@ const (
 	envCustomGroups   = "CUSTOM_GROUPS"
 	envAwsPartition   = "AWS_PARTITION"
 
-	valuesSeparator        = ";"
+	valuesSeparator        = ","
 	emptyString            = ""
 	lambdaPrefix           = "/aws/lambda/"
 	subscriptionFilterName = "logzio_cw_shipper"
