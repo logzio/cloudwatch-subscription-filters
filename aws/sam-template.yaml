@@ -44,13 +44,6 @@ Parameters:
     AllowedValues:
       - 'true'
       - 'false'
-  logzioSendAll:
-    Type: String
-    Description: By default, we do not send logs of type START, END, REPORT. Choose true to send all log types.
-    Default: 'false'
-    AllowedValues:
-      - 'true'
-      - 'false'
   logzioEnrich:
     Type: String
     Description: Enriches the CloudWatch events with custom properties at ship time. The format is `key1=value1;key2=value2`. By default is empty.
@@ -128,8 +121,8 @@ Resources:
       Runtime: python3.9
       Handler: lambda_function.lambda_handler
       CodeUri:
-        Bucket: logzio-aws-integrations-us-east-1
-        Key: cloudwatch-auto-deployment/0.0.3/logzio-cloudwatch.zip
+        Bucket: logzio-aws-integrations-<<REGION>>
+        Key: cloudwatch-auto-deployment/1.0.0/logzio-cloudwatch.zip
       FunctionName: !Join ['-', [!Ref AWS::StackName, 'shipper-func']]
       MemorySize: !Ref shipperLambdaMemory
       Timeout: !Ref shipperLambdaTimeout
@@ -141,13 +134,12 @@ Resources:
           FORMAT: !Ref logzioFormat
           COMPRESS: !Ref logzioCompress
           ENRICH: !Ref logzioEnrich
-          SENDALL: !Ref logzioSendAll
   triggerLambdaFunction:
     Type: 'AWS::Lambda::Function'
     DependsOn: logzioCloudwatchLogsLambda
     Properties:
       Code:
-        S3Bucket: logzio-aws-integrations-us-east-1
+        S3Bucket: logzio-aws-integrations-<<REGION>>
         S3Key: cloudwatch-shipper-trigger/1.0.0/function.zip
       FunctionName:  !Join ['-', [!Ref AWS::StackName, 'trigger-func']]
       Handler: bootstrap
