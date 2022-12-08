@@ -140,7 +140,7 @@ Resources:
     Properties:
       Code:
         S3Bucket: logzio-aws-integrations-<<REGION>>
-        S3Key: cloudwatch-shipper-trigger/1.0.0/function.zip
+        S3Key: cloudwatch-shipper-trigger/<<VERSION>>/function.zip
       FunctionName:  !Join ['-', [!Ref AWS::StackName, 'trigger-func']]
       Handler: bootstrap
       Runtime: provided.al2

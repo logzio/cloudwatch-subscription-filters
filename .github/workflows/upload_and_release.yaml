@@ -1,0 +1,53 @@
+name: S3 Buckets Upload
+on:
+  release:
+    types: [published]
+jobs:
+  upload:
+    name: Build and upload new version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+      - run: git fetch --force --tags
+      - uses: actions/setup-go@v3
+        with:
+          go-version: '1.18'
+      - name: Import GPG key
+        id: import_gpg
+        uses: crazy-max/ghaction-import-gpg@v4
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.PASSPHRASE }}
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          version: latest
+          args: release --rm-dist
+        env:
+          GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+      - name: Install script dependencies
+        run: pip3 install -r ./release/requirements.txt
+      - name: Upload Cloudformation template
+        env:
+          AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+          FOLDER_NAME: cloudwatch-shipper-trigger
+          VERSION_NUMBER: ${{ github.event.release.tag_name }}
+          PATH_TO_FILE: ${{ github.workspace }}/aws/sam-template.yaml
+        run: python release/main.py
+      - name: Download release
+        run: wget -c https://github.com/logzio/cloudwatch-shipper-trigger/releases/download/${{ github.event.release.tag_name }}/cloudwatch-shipper-trigger_${{ github.event.release.tag_name }}_linux_amd64.zip -O function.zip
+      - name: Upload Zip
+        env:
+          AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+          FOLDER_NAME: cloudwatch-shipper-trigger
+          VERSION_NUMBER: ${{ github.event.release.tag_name }}
+          PATH_TO_FILE: ${{ github.workspace }}/function.zip
+        run: python release/main.py
