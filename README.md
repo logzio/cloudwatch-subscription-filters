@@ -1,3 +1,6 @@
+# ⚠️ Deprecation notice ⚠️
+This project is deprecated. Please see [this repo](https://github.com/logzio/firehose-logs) for the recommended shipping method.
+
 # Cloudwatch shipper with log groups detection
 
 This project deploys instrumentation that allows shipping Cloudwatch logs to Logz.io.
